@@ -26,7 +26,7 @@ class VideoView : ConstraintLayout {
             field = value
             setInternalAspectRatio()
         }
-    var videoSize: MediaPlayer.VideoSize = MediaPlayer.VideoSize(0, 0, 1.0f)
+    var videoSize: MediaPlayer.VideoSize = MediaPlayer.VideoSize(1920, 1080, 1.0f)
         set(value) {
             field = value
             setInternalAspectRatio()
@@ -178,9 +178,16 @@ class VideoView : ConstraintLayout {
                     ConstraintSet.PARENT_ID,
                     ConstraintSet.BOTTOM
                 )
+
+                val bestRatio =
+                    if (videoSize.width > 0 && videoSize.height > 0)
+                        (width / videoSize.width).coerceAtMost(
+                            height / videoSize.height
+                        )
+                    else width / height
                 set.setDimensionRatio(
                     surfaceView.id,
-                    "H,${videoSize.width * videoSize.ratio}:${videoSize.height * videoSize.ratio}"
+                    "H,${videoSize.width * bestRatio}:${videoSize.height * bestRatio}"
                 )
                 set.applyTo(this)
             }

@@ -27,7 +27,7 @@ import dev.sajidali.onplayer.core.VideoView
 import kotlin.concurrent.thread
 
 @UnstableApi
-class Media3Player(
+class Media3Player constructor(
     private val context: Context
 ) : MediaPlayer, Player.Listener {
 
@@ -269,14 +269,14 @@ class Media3Player(
         videoWidth = (videoSize.width * videoSize.pixelWidthHeightRatio).toInt()
         videoHeight = (videoSize.height * videoSize.pixelWidthHeightRatio).toInt()
         videoView?.videoSize = MediaPlayer.VideoSize(
-            videoWidth,
-            videoHeight,
+            videoSize.width,
+            videoSize.height,
             videoSize.pixelWidthHeightRatio
         )
         onVideoSizeChanged(
             MediaPlayer.VideoSize(
-                videoWidth,
-                videoHeight,
+                videoSize.width,
+                videoSize.height,
                 videoSize.pixelWidthHeightRatio
             )
         )
