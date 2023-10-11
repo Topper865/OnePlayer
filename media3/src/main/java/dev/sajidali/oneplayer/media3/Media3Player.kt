@@ -24,12 +24,11 @@ import dev.sajidali.onplayer.core.MediaPlayer
 import dev.sajidali.onplayer.core.MediaSource
 import dev.sajidali.onplayer.core.MediaTrack
 import dev.sajidali.onplayer.core.VideoView
-import kotlinx.coroutines.CoroutineScope
 import kotlin.concurrent.thread
 
 @UnstableApi
-class ExoMediaPlayer(
-    private val context: Context, override var scope: CoroutineScope?
+class Media3Player(
+    private val context: Context
 ) : MediaPlayer, Player.Listener {
 
     private var mediaPlayer: ExoPlayer = getPlayer()

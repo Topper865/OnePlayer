@@ -34,7 +34,6 @@ interface MediaPlayer {
     val videoHeight: Int
 
     var mediaSource: MediaSource?
-    var scope: CoroutineScope?
 
     val audioTracks: List<MediaTrack>
     val subtitleTracks: List<MediaTrack>
