@@ -242,7 +242,6 @@ class ExoMediaPlayer(
     override fun onCues(cues: MutableList<Cue>) {
         val subtitle = cues.map { it.text }
             .joinToString("\n")
-        videoView?.updateSubtitles(subtitle)
         onSubtitleTextUpdated(subtitle)
     }
 
@@ -270,6 +269,11 @@ class ExoMediaPlayer(
     override fun onVideoSizeChanged(videoSize: VideoSize) {
         videoWidth = (videoSize.width * videoSize.pixelWidthHeightRatio).toInt()
         videoHeight = (videoSize.height * videoSize.pixelWidthHeightRatio).toInt()
+        videoView?.videoSize = MediaPlayer.VideoSize(
+            videoWidth,
+            videoHeight,
+            videoSize.pixelWidthHeightRatio
+        )
         onVideoSizeChanged(
             MediaPlayer.VideoSize(
                 videoWidth,

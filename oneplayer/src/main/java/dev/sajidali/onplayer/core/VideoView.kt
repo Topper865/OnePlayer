@@ -3,17 +3,11 @@ package dev.sajidali.onplayer.core
 import android.content.Context
 import android.graphics.Color
 import android.util.AttributeSet
-import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class VideoView : ConstraintLayout {
 
@@ -38,24 +32,7 @@ class VideoView : ConstraintLayout {
             setInternalAspectRatio()
         }
 
-    var onTouchListener: ((event: MotionEvent) -> Boolean) = { false }
-
-    var videoController: VideoController? = null
-    private var visibilityJob: Job? = null
-
-    fun updateSubtitles(subtitle: String) {
-        videoController?.setSubTitles(subtitle)
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        setVisibilityTimer()
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        visibilityJob?.cancel()
-    }
+    private var onAspectRatioChanged: AspectRatio.() -> Unit = {}
 
     val surface: View
         get() = surfaceView
@@ -77,6 +54,10 @@ class VideoView : ConstraintLayout {
         )
         setBackgroundColor(Color.BLACK)
         setInternalAspectRatio()
+    }
+
+    fun onAspectRatioChanged(block: AspectRatio.() -> Unit) {
+        onAspectRatioChanged = block
     }
 
     private fun setInternalAspectRatio() {
@@ -109,7 +90,6 @@ class VideoView : ConstraintLayout {
                     ConstraintSet.BOTTOM
                 )
                 set.applyTo(this)
-                videoController?.showInfo("Fit Screen")
             }
 
             AspectRatio.AR_16_9_FIT_PARENT -> {
@@ -140,7 +120,6 @@ class VideoView : ConstraintLayout {
                 )
                 set.setDimensionRatio(surfaceView.id, "16:10")
                 set.applyTo(this)
-                videoController?.showInfo("16:10")
             }
 
             AspectRatio.AR_4_3_FIT_PARENT -> {
@@ -171,7 +150,6 @@ class VideoView : ConstraintLayout {
                 )
                 set.setDimensionRatio(surfaceView.id, "4:3")
                 set.applyTo(this)
-                videoController?.showInfo("4:3")
             }
 
             AspectRatio.AR_BEST_FIT -> {
@@ -205,54 +183,21 @@ class VideoView : ConstraintLayout {
                     "H,${videoSize.width * videoSize.ratio}:${videoSize.height * videoSize.ratio}"
                 )
                 set.applyTo(this)
-                videoController?.showInfo("Best Fit")
             }
         }
+        onAspectRatioChanged(aspectRatio)
     }
 
     override fun onFinishInflate() {
         super.onFinishInflate()
         keepScreenOn = true
         updateVideo()
-        setVisibilityTimer()
     }
 
     private fun updateVideo() {
         val index = indexOfChild(surfaceView)
         removeView(surfaceView)
         addView(surfaceView, index)
-    }
-
-    fun setVisibilityTimer(showButtons: Boolean = false) {
-        videoController?.show(true)
-        if (visibilityJob?.isActive == true) {
-            visibilityJob?.cancel()
-        }
-
-        visibilityJob = GlobalScope.launch {
-            delay(10000L)
-            post {
-                videoController?.hide()
-            }
-        }
-    }
-
-    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        setVisibilityTimer()
-        return super.onKeyUp(keyCode, event)
-    }
-
-    override fun performClick(): Boolean {
-        return super.performClick()
-    }
-
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
-        if (videoController?.isControlsVisible() == true) event?.let { onTouchListener(it) }
-        setVisibilityTimer(true)
-        if (event?.action == MotionEvent.ACTION_UP) {
-            performClick()
-        }
-        return true
     }
 
 }
