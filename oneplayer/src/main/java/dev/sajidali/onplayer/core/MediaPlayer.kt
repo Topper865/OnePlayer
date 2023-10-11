@@ -3,8 +3,6 @@ package dev.sajidali.onplayer.core
 import android.view.SurfaceView
 import android.view.TextureView
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharedFlow
 
 /**
  * Created by Sajid Ali on 10/10/2023.
@@ -25,20 +23,15 @@ interface MediaPlayer {
         IDLE, BUFFERING, PLAYING, PAUSED, STOPPED, RELEASED, SEEKING, COMPLETED
     }
 
-    var onInfo: Flow<Info>
+    fun onInfo(block: Info.() -> Unit)
+    fun onBufferingUpdate(block: (progress: Int) -> Unit)
+    fun onVideoSizeChanged(block: VideoSize.() -> Unit)
+    fun onStateChanged(block: State.() -> Unit)
+    fun onError(block: Info.() -> Unit)
+    fun onSubtitleTextUpdated(block: (subtitle: String) -> Unit)
 
-    var onBufferingUpdate: SharedFlow<Int>
-
-    var onVideoSizeChanged: SharedFlow<VideoSize>
-
-    var onStateChanged: SharedFlow<State>
-
-    var onError: SharedFlow<Info>
-
-    var onSubtitleTextUpdated: SharedFlow<String>
-
-    val videoWidth: Float
-    val videoHeight: Float
+    val videoWidth: Int
+    val videoHeight: Int
 
     var mediaSource: MediaSource?
     var scope: CoroutineScope?
@@ -106,9 +99,10 @@ interface MediaPlayer {
     fun release(targetState: State = State.RELEASED)
     fun setVideoView(surfaceView: SurfaceView?)
     fun setVideoView(textureView: TextureView?)
+    fun setVideoView(videoView: VideoView?)
 
 
     data class Info(val what: Int, val extra: Int)
-    data class VideoSize(val width: Float, val height: Float,val ratio: Float)
+    data class VideoSize(val width: Int, val height: Int, val ratio: Float)
 
 }

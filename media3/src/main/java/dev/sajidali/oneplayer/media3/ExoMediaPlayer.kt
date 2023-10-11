@@ -23,11 +23,8 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import dev.sajidali.onplayer.core.MediaPlayer
 import dev.sajidali.onplayer.core.MediaSource
 import dev.sajidali.onplayer.core.MediaTrack
+import dev.sajidali.onplayer.core.VideoView
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
 
 @UnstableApi
@@ -39,6 +36,7 @@ class ExoMediaPlayer(
 
     private var surfaceView: SurfaceView? = null
     private var textureView: TextureView? = null
+    private var videoView: VideoView? = null
     private var seekDuration: Long = 0
     override var isLooping: Boolean = false
     private var retryThread: Thread? = null
@@ -62,16 +60,40 @@ class ExoMediaPlayer(
         it.addListener(this)
     }
 
-    override var videoWidth: Float = 0.0f
-    override var videoHeight: Float = 0.0f
+    override fun onInfo(block: MediaPlayer.Info.() -> Unit) {
+        onInfo = block
+    }
+
+    override fun onBufferingUpdate(block: (progress: Int) -> Unit) {
+        onBufferingUpdate = block
+    }
+
+    override fun onVideoSizeChanged(block: MediaPlayer.VideoSize.() -> Unit) {
+        onVideoSizeChanged = block
+    }
+
+    override fun onStateChanged(block: MediaPlayer.State.() -> Unit) {
+        onStateChanged = block
+    }
+
+    override fun onError(block: MediaPlayer.Info.() -> Unit) {
+        onError = block
+    }
+
+    override fun onSubtitleTextUpdated(block: (subtitle: String) -> Unit) {
+        onSubtitleTextUpdated = block
+    }
+
+    override var videoWidth: Int = 0
+    override var videoHeight: Int = 0
     override var mediaSource: MediaSource? = null
 
-    override var onInfo: Flow<MediaPlayer.Info> = MutableSharedFlow()
-    override var onBufferingUpdate: SharedFlow<Int> = MutableSharedFlow()
-    override var onVideoSizeChanged: SharedFlow<MediaPlayer.VideoSize> = MutableSharedFlow()
-    override var onStateChanged: SharedFlow<MediaPlayer.State> = MutableSharedFlow()
-    override var onError: SharedFlow<MediaPlayer.Info> = MutableSharedFlow()
-    override var onSubtitleTextUpdated: SharedFlow<String> = MutableSharedFlow()
+    private var onInfo: MediaPlayer.Info.() -> Unit = {}
+    private var onBufferingUpdate: (progress: Int) -> Unit = {}
+    private var onVideoSizeChanged: MediaPlayer.VideoSize.() -> Unit = {}
+    private var onStateChanged: MediaPlayer.State.() -> Unit = {}
+    private var onError: MediaPlayer.Info.() -> Unit = {}
+    private var onSubtitleTextUpdated: (subtitle: String) -> Unit = {}
 
     override val audioTracks: List<MediaTrack>
         get() {
@@ -187,21 +209,20 @@ class ExoMediaPlayer(
             mediaPlayer.setVideoSurfaceView(surfaceView)
         } else if (textureView != null) {
             mediaPlayer.setVideoTextureView(textureView)
+        } else if (videoView != null) {
+            if (videoView?.surface is SurfaceView) {
+                (videoView?.surface as? SurfaceView)?.let(mediaPlayer::setVideoSurfaceView)
+            } else if (videoView?.surface is TextureView) {
+                (videoView?.surface as? TextureView)?.let(mediaPlayer::setVideoTextureView)
+            }
         }
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
         when (playbackState) {
             Player.STATE_BUFFERING -> {
-                scope?.launch {
-                    (onInfo as MutableSharedFlow).emit(
-                        MediaPlayer.Info(
-                            MediaPlayer.INFO_BUFFERING_STARTED,
-                            0
-                        )
-                    )
-                    (onStateChanged as MutableSharedFlow).emit(MediaPlayer.State.BUFFERING)
-                }
+                onInfo(MediaPlayer.Info(MediaPlayer.INFO_BUFFERING_STARTED, 0))
+                onStateChanged(MediaPlayer.State.BUFFERING)
             }
 
             Player.STATE_READY -> {
@@ -212,59 +233,34 @@ class ExoMediaPlayer(
             }
 
             Player.STATE_ENDED -> {
-                scope?.launch {
-                    (onInfo as MutableSharedFlow).emit(
-                        MediaPlayer.Info(
-                            MediaPlayer.INFO_PLAYBACK_COMPLETE,
-                            0
-                        )
-                    )
-                    (onStateChanged as MutableSharedFlow).emit(MediaPlayer.State.COMPLETED)
-                }
+                onInfo(MediaPlayer.Info(MediaPlayer.INFO_PLAYBACK_COMPLETE, 0))
+                onStateChanged(MediaPlayer.State.COMPLETED)
             }
         }
     }
 
     override fun onCues(cues: MutableList<Cue>) {
-        scope?.launch {
-            (onSubtitleTextUpdated as MutableSharedFlow).emit(cues.map { it.text }
-                .joinToString("\n"))
-        }
+        val subtitle = cues.map { it.text }
+            .joinToString("\n")
+        videoView?.updateSubtitles(subtitle)
+        onSubtitleTextUpdated(subtitle)
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         if (isPlaying) {
             if (mediaPlayer.playbackState == Player.STATE_BUFFERING) {
-                scope?.launch {
-                    (onInfo as MutableSharedFlow).emit(
-                        MediaPlayer.Info(
-                            MediaPlayer.INFO_BUFFERING_COMPLETED,
-                            0
-                        )
-                    )
-                }
+                onInfo(MediaPlayer.Info(MediaPlayer.INFO_BUFFERING_COMPLETED, 0))
             }
-            scope?.launch {
-                (onStateChanged as MutableSharedFlow).emit(MediaPlayer.State.PLAYING)
-            }
+            onStateChanged(MediaPlayer.State.PLAYING)
         } else {
-            scope?.launch {
-                (onStateChanged as MutableSharedFlow).emit(MediaPlayer.State.PAUSED)
-            }
+            onStateChanged(MediaPlayer.State.PAUSED)
         }
 
     }
 
     override fun onPlayerError(error: PlaybackException) {
         error.printStackTrace()
-        scope?.launch {
-            (onError as MutableSharedFlow).emit(
-                MediaPlayer.Info(
-                    error.errorCode,
-                    error.errorCode
-                )
-            )
-        }
+        onInfo(MediaPlayer.Info(error.errorCode, 0))
     }
 
     override fun onEvents(player: Player, events: Player.Events) {
@@ -272,17 +268,15 @@ class ExoMediaPlayer(
     }
 
     override fun onVideoSizeChanged(videoSize: VideoSize) {
-        videoWidth = videoSize.width * videoSize.pixelWidthHeightRatio
-        videoHeight = videoSize.height * videoSize.pixelWidthHeightRatio
-        scope?.launch {
-            (onVideoSizeChanged as MutableSharedFlow).emit(
-                MediaPlayer.VideoSize(
-                    videoWidth,
-                    videoHeight,
-                    videoSize.pixelWidthHeightRatio
-                )
+        videoWidth = (videoSize.width * videoSize.pixelWidthHeightRatio).toInt()
+        videoHeight = (videoSize.height * videoSize.pixelWidthHeightRatio).toInt()
+        onVideoSizeChanged(
+            MediaPlayer.VideoSize(
+                videoWidth,
+                videoHeight,
+                videoSize.pixelWidthHeightRatio
             )
-        }
+        )
     }
 
     override fun onMetadata(metadata: Metadata) {
@@ -326,7 +320,6 @@ class ExoMediaPlayer(
     override fun stop() {
         if (isPlaying) {
             mediaPlayer.stop()
-//            mediaPlayer.setVideoSurface(null)
         }
     }
 
@@ -390,6 +383,11 @@ class ExoMediaPlayer(
 
     override fun setVideoView(textureView: TextureView?) {
         this.textureView = textureView
+        setInternalVideoView()
+    }
+
+    override fun setVideoView(videoView: VideoView?) {
+        this.videoView = videoView
         setInternalVideoView()
     }
 

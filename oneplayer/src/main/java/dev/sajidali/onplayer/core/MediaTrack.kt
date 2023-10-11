@@ -10,6 +10,7 @@ class MediaTrack(
     val type: TrackType,
     val isSelected: Boolean = false
 ) {
+
     enum class TrackType {
         AUDIO,
         VIDEO,

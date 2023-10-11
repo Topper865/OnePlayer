@@ -8,7 +8,7 @@ android {
     compileSdk = 33
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 21
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
@@ -36,9 +36,9 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
-
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     api("androidx.media3:media3-exoplayer:1.1.1")
-    api(project(":base"))
+    api(project(":oneplayer"))
 
     implementation(project(":exoffmpeg"))
 
